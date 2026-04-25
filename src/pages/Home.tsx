@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Rocket, ArrowRight, Shield, BarChart3, Zap, Clock, TrendingUp, Globe, Star, ChevronDown, ChevronUp, Lock, RefreshCw, Search, Eye } from 'lucide-react'
+import { Rocket, ArrowRight, Shield, BarChart3, Zap, Clock, TrendingUp, Globe, Star, ChevronDown, ChevronUp, Lock, RefreshCw, Search, Eye, Play } from 'lucide-react'
 import { useInView } from '../hooks/useInView'
 import ImageLightbox from '../components/ImageLightbox'
 
@@ -214,6 +214,32 @@ export default function Home() {
               <p className="text-gray-400">Real results from real trading accounts. Click any image to view full size.</p>
             </div>
           </AnimatedSection>
+          {/* Video Proof */}
+          <AnimatedSection className="mb-8">
+            <div className="card overflow-hidden p-0 max-w-3xl mx-auto">
+              <div className="relative">
+                <video
+                  controls
+                  playsInline
+                  preload="metadata"
+                  poster=""
+                  className="w-full rounded-t-2xl"
+                >
+                  <source src="/trading-proof-video.mp4" type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+                <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-success/90 text-white text-xs font-bold flex items-center gap-1">
+                  <Play className="w-3 h-3" /> Live Trading Recording
+                </div>
+              </div>
+              <div className="p-4">
+                <p className="text-sm text-gray-300 font-medium">Live Trading Session - Robot in Action</p>
+                <p className="text-xs text-gray-500 mt-1">Watch the Quantum Edge robot executing real trades on MetaTrader 5</p>
+              </div>
+            </div>
+          </AnimatedSection>
+
+          {/* Image Proof Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {tradingProofImages.map((img, i) => (
               <AnimatedSection key={i} delay={`delay-${(i % 3 + 1) * 100}`}>
