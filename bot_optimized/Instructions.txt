@@ -16,6 +16,19 @@ MT5 SWING BOT - QUICK START (WINDOWS CMD)
 7) Backtest:
    python main.py --config config_demo.json --backtest
 
+TRADING PROFILE (AGGRESSIVE, USER REQUEST)
+==========================================
+- Symbol focus: AUDUSD only.
+- Entry quality: opens only when trend is strong and last closed candle confirms direction.
+- Daily trade limit: max 2 new entries/day.
+- Dynamic lot from capital, with target range 2.00 - 3.00 lots when account size supports it.
+- Config keys controlling this:
+  max_trades_per_day
+  require_strong_trend
+  force_last_candle_confirmation
+  min_dynamic_lot
+  max_dynamic_lot
+
 8) Dynamic lot sizing (capital base):
    - Set "capital_base": "equity"  -> lot based on current equity
    - Set "capital_base": "balance" -> lot based on account balance

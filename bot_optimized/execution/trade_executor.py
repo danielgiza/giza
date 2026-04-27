@@ -36,6 +36,8 @@ class TradeExecutor:
         self.risk_manager = risk_manager
         self.logger = logger
         self.recent_orders: Dict[str, datetime] = {}
+        self.daily_entries: Dict[str, int] = {}
+        self.daily_entries_day = datetime.now().date()
 
     def _is_duplicate(self, symbol: str, direction: str) -> bool:
         key = f"{symbol}:{direction}"
@@ -46,6 +48,20 @@ class TradeExecutor:
 
     def _mark_order(self, symbol: str, direction: str) -> None:
         self.recent_orders[f"{symbol}:{direction}"] = datetime.now()
+
+    def _reset_daily_entries_if_needed(self) -> None:
+        today = datetime.now().date()
+        if today != self.daily_entries_day:
+            self.daily_entries_day = today
+            self.daily_entries = {}
+
+    def _daily_limit_reached(self, symbol: str) -> bool:
+        self._reset_daily_entries_if_needed()
+        return self.daily_entries.get(symbol, 0) >= self.config.max_entries_per_symbol_per_day
+
+    def _increment_daily_entries(self, symbol: str) -> None:
+        self._reset_daily_entries_if_needed()
+        self.daily_entries[symbol] = self.daily_entries.get(symbol, 0) + 1
 
     def _build_levels(self, symbol: str, direction: str, atr_value: float) -> Tuple[float, float, float]:
         tick = self.order_manager.connector.symbol_tick(symbol)
@@ -131,6 +147,9 @@ class TradeExecutor:
         if self.position_manager.has_direction_position(symbol, signal.signal):
             return False, f"position already exists: {symbol} {signal.signal}"
 
+        if self._daily_limit_reached(symbol):
+            return False, f"daily entry limit reached ({self.config.max_entries_per_symbol_per_day})"
+
         if self._is_duplicate(symbol, signal.signal):
             return False, "duplicate order prevented"
 
@@ -167,6 +186,7 @@ class TradeExecutor:
 
         if ok:
             self._mark_order(symbol, signal.signal)
+            self._increment_daily_entries(symbol)
             return True, f"{signal.signal} order executed"
 
         return False, msg

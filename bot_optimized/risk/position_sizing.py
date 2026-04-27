@@ -28,6 +28,8 @@ class PositionSizer:
         balance: float,
         risk_percent: float,
         sl_distance_price: float,
+        min_volume_override: float | None = None,
+        max_volume_override: float | None = None,
     ) -> float:
         info = self.connector.symbol_info(symbol)
         if info is None:
@@ -52,9 +54,19 @@ class PositionSizer:
             return 0.0
 
         raw_volume = risk_amount / (sl_points * value_per_point_per_lot)
-        min_v = float(getattr(info, "volume_min", 0.01) or 0.01)
-        max_v = float(getattr(info, "volume_max", 100.0) or 100.0)
+        broker_min = float(getattr(info, "volume_min", 0.01) or 0.01)
+        broker_max = float(getattr(info, "volume_max", 100.0) or 100.0)
+        min_v = max(broker_min, float(min_volume_override)) if min_volume_override is not None else broker_min
+        max_v = min(broker_max, float(max_volume_override)) if max_volume_override is not None else broker_max
         step = float(getattr(info, "volume_step", 0.01) or 0.01)
+        if min_v > max_v:
+            self.logger.error(
+                "Invalid lot override for %s: min %.2f > max %.2f after broker limits",
+                symbol,
+                min_v,
+                max_v,
+            )
+            return 0.0
 
         volume = self._normalize_volume(raw_volume, min_v, max_v, step)
         self.logger.info(

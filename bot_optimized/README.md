@@ -96,6 +96,8 @@ Dynamic lot sizing setting:
 - `capital_base`: `"balance"` or `"equity"`
   - `"equity"` = lot size updates with floating P/L in real time
   - `"balance"` = lot size uses account balance only
+- `min_lot` / `max_lot`: enforce lot range (for example 2.0 to 3.0)
+- `max_trades_per_day`: limits how many new entries can be opened daily
 
 ---
 
@@ -145,6 +147,8 @@ If any safety check fails, bot runs in monitor-only mode or exits.
 - Price close > EMA50 on H4
 - RSI in [50, 70]
 - EMA50 > EMA200 on D1
+- Last closed candle is bullish and closes in top half (momentum confirmation)
+- H4 EMA trend strength > configured threshold
 - No existing buy position on symbol
 - Spread acceptable
 
@@ -154,6 +158,8 @@ If any safety check fails, bot runs in monitor-only mode or exits.
 - Price close < EMA50 on H4
 - RSI in [30, 50]
 - EMA50 < EMA200 on D1
+- Last closed candle is bearish and closes in bottom half (momentum confirmation)
+- H4 EMA trend strength > configured threshold
 - No existing sell position on symbol
 - Spread acceptable
 
