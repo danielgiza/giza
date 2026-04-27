@@ -1,0 +1,36 @@
+MT5 SWING BOT - QUICK START (WINDOWS CMD)
+=========================================
+
+1) Install MetaTrader 5 terminal and login to your broker account.
+2) Enable Algo Trading in MT5 terminal.
+3) Open CMD in bot_optimized folder.
+4) Install dependency:
+   pip install MetaTrader5
+
+5) Demo run:
+   python main.py --config config_demo.json
+
+6) Live config run (safe by default):
+   python main.py --config config_live.json
+
+7) Backtest:
+   python main.py --config config_demo.json --backtest
+
+CONFIG RULES
+============
+- Use JSON files only.
+- Do NOT use .env files.
+- If mt5_login / mt5_password / mt5_server are empty,
+  bot uses already logged-in MT5 terminal account.
+
+LIVE SAFETY
+===========
+- config_demo.json -> live_trading MUST stay false.
+- config_live.json -> defaults live_trading false.
+- Live trading starts only when:
+  a) you use config_live.json
+  b) live_trading=true
+  c) real account is detected
+  d) you type CONFIRM_LIVE
+
+Always forward-test on DEMO before any live execution.

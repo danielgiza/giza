@@ -1,0 +1,23 @@
+{
+  "mt5_login": "",
+  "mt5_password": "",
+  "mt5_server": "",
+  "live_trading": false,
+  "symbols": ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD"],
+  "timeframe": "H4",
+  "higher_timeframe": "D1",
+  "risk_per_trade": 1.0,
+  "max_daily_loss": 3.0,
+  "max_open_trades": 3,
+  "max_spread_points": 35,
+  "atr_sl_multiplier": 2.0,
+  "atr_tp_multiplier": 3.0,
+  "trailing_stop_enabled": true,
+  "trading_hours": {
+    "start": "00:00",
+    "end": "23:59"
+  },
+  "magic_number": 20260427,
+  "deviation": 20,
+  "polling_interval_seconds": 60
+}
