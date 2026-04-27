@@ -1,7 +1,7 @@
 {
-  "mt5_login": "",
-  "mt5_password": "",
-  "mt5_server": "",
+  "mt5_login": "837658",
+  "mt5_password": "D#6WycbI",
+  "mt5_server": "UltimaMarkets-Demo",
   "live_trading": false,
   "symbols": ["AUDUSD"],
   "timeframe": "H4",
