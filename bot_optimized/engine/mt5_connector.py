@@ -110,27 +110,52 @@ class MT5Connector:
         self.logger.info("ORDER RESPONSE: %s", result)
         return result
 
-    def detect_filling_mode(self, symbol: str) -> int:
-        """Detect a valid filling mode for this symbol."""
+    def get_filling_modes(self, symbol: str) -> List[int]:
+        """
+        Return preferred filling modes for symbol in fallback order.
+
+        Some brokers reject one filling mode per symbol/account (retcode 10030),
+        so callers should attempt these modes in order.
+        """
 
         if mt5 is None:
-            return 0
+            return [0]
 
         info = self.symbol_info(symbol)
-        if info is not None and getattr(info, "filling_mode", None) is not None:
-            value = int(info.filling_mode)
-            if value in {
-                getattr(mt5, "ORDER_FILLING_FOK", 0),
-                getattr(mt5, "ORDER_FILLING_IOC", 1),
-                getattr(mt5, "ORDER_FILLING_RETURN", 2),
-            }:
-                return value
+        fallback = [
+            int(getattr(mt5, "ORDER_FILLING_IOC", 1)),
+            int(getattr(mt5, "ORDER_FILLING_FOK", 0)),
+            int(getattr(mt5, "ORDER_FILLING_RETURN", 2)),
+        ]
 
-        for candidate in [
-            getattr(mt5, "ORDER_FILLING_RETURN", 2),
-            getattr(mt5, "ORDER_FILLING_IOC", 1),
-            getattr(mt5, "ORDER_FILLING_FOK", 0),
-        ]:
-            return candidate
+        if info is None:
+            return fallback
 
-        return getattr(mt5, "ORDER_FILLING_RETURN", 2)
+        # symbol_info.filling_mode is a bitmask of SYMBOL_FILLING_* flags.
+        allowed_mask = int(getattr(info, "filling_mode", 0) or 0)
+        options: List[int] = []
+
+        symbol_fok = int(getattr(mt5, "SYMBOL_FILLING_FOK", 1))
+        symbol_ioc = int(getattr(mt5, "SYMBOL_FILLING_IOC", 2))
+        symbol_boc = int(getattr(mt5, "SYMBOL_FILLING_BOC", 4))
+
+        if allowed_mask & symbol_ioc:
+            options.append(int(getattr(mt5, "ORDER_FILLING_IOC", 1)))
+        if allowed_mask & symbol_fok:
+            options.append(int(getattr(mt5, "ORDER_FILLING_FOK", 0)))
+        if allowed_mask & symbol_boc:
+            options.append(int(getattr(mt5, "ORDER_FILLING_BOC", 3)))
+
+        # RETURN can still work on many symbols, keep it as a fallback.
+        options.append(int(getattr(mt5, "ORDER_FILLING_RETURN", 2)))
+
+        deduped: List[int] = []
+        for mode in options + fallback:
+            if mode not in deduped:
+                deduped.append(mode)
+        return deduped
+
+    def detect_filling_mode(self, symbol: str) -> int:
+        """Backward-compatible helper that returns the first preferred mode."""
+
+        return self.get_filling_modes(symbol)[0]

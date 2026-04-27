@@ -83,48 +83,59 @@ class OrderManager:
             return False, reason, None
 
         order_type = getattr(mt5, "ORDER_TYPE_BUY", 0) if direction == "buy" else getattr(mt5, "ORDER_TYPE_SELL", 1)
+        filling_modes = self.connector.get_filling_modes(symbol)
+        invalid_filling_retcode = int(getattr(mt5, "TRADE_RETCODE_INVALID_FILL", 10030))
         safe_retcodes = {
             int(getattr(mt5, "TRADE_RETCODE_REQUOTE", 10004)),
             int(getattr(mt5, "TRADE_RETCODE_PRICE_CHANGED", 10020)),
             int(getattr(mt5, "TRADE_RETCODE_PRICE_OFF", 10021)),
         }
 
-        for attempt in range(retries + 1):
-            tick = self.connector.symbol_tick(symbol)
-            if tick is None:
-                return False, "missing market tick", None
+        for filling_mode in filling_modes:
+            for attempt in range(retries + 1):
+                tick = self.connector.symbol_tick(symbol)
+                if tick is None:
+                    return False, "missing market tick", None
 
-            price = float(tick.ask if direction == "buy" else tick.bid)
-            request = {
-                "action": getattr(mt5, "TRADE_ACTION_DEAL", 1),
-                "symbol": symbol,
-                "volume": volume,
-                "type": order_type,
-                "price": price,
-                "sl": sl,
-                "tp": tp,
-                "deviation": deviation,
-                "magic": magic,
-                "comment": comment,
-                "type_time": getattr(mt5, "ORDER_TIME_GTC", 0),
-                "type_filling": self.connector.detect_filling_mode(symbol),
-            }
+                price = float(tick.ask if direction == "buy" else tick.bid)
+                request = {
+                    "action": getattr(mt5, "TRADE_ACTION_DEAL", 1),
+                    "symbol": symbol,
+                    "volume": volume,
+                    "type": order_type,
+                    "price": price,
+                    "sl": sl,
+                    "tp": tp,
+                    "deviation": deviation,
+                    "magic": magic,
+                    "comment": comment,
+                    "type_time": getattr(mt5, "ORDER_TIME_GTC", 0),
+                    "type_filling": filling_mode,
+                }
 
-            result = self.connector.order_send(request)
-            if result is None:
-                return False, "order_send returned None", None
+                result = self.connector.order_send(request)
+                if result is None:
+                    return False, "order_send returned None", None
 
-            retcode = int(getattr(result, "retcode", -1))
-            if retcode in {
-                int(getattr(mt5, "TRADE_RETCODE_DONE", 10009)),
-                int(getattr(mt5, "TRADE_RETCODE_PLACED", 10008)),
-            }:
-                return True, "order executed", result
+                retcode = int(getattr(result, "retcode", -1))
+                if retcode in {
+                    int(getattr(mt5, "TRADE_RETCODE_DONE", 10009)),
+                    int(getattr(mt5, "TRADE_RETCODE_PLACED", 10008)),
+                }:
+                    return True, "order executed", result
 
-            if retcode in safe_retcodes and attempt < retries:
-                self.logger.warning("Retrying order for %s due to retcode %s (attempt %s)", symbol, retcode, attempt + 1)
-                continue
+                if retcode == invalid_filling_retcode:
+                    self.logger.warning(
+                        "Filling mode %s rejected for %s with 10030. Trying next mode.",
+                        filling_mode,
+                        symbol,
+                    )
+                    break
 
-            return False, f"order rejected retcode={retcode}", result
+                if retcode in safe_retcodes and attempt < retries:
+                    self.logger.warning("Retrying order for %s due to retcode %s (attempt %s)", symbol, retcode, attempt + 1)
+                    continue
 
-        return False, "order retry limit reached", None
+                return False, f"order rejected retcode={retcode}", result
+
+        return False, "order rejected retcode=10030 (all filling modes failed)", None
