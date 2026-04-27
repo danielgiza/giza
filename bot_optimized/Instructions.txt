@@ -16,6 +16,11 @@ MT5 SWING BOT - QUICK START (WINDOWS CMD)
 7) Backtest:
    python main.py --config config_demo.json --backtest
 
+8) Dynamic lot sizing (capital base):
+   - Set "capital_base": "equity"  -> lot based on current equity
+   - Set "capital_base": "balance" -> lot based on account balance
+   - Default in demo config is "equity"
+
 CONFIG RULES
 ============
 - Use JSON files only.

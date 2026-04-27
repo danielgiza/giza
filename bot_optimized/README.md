@@ -15,6 +15,7 @@ It supports:
 - Risk management and position sizing
 - CMD dashboard
 - Historical backtesting with CSV export
+- Dynamic lot sizing based on capital (balance/equity)
 
 ---
 
@@ -89,6 +90,12 @@ All parameters are stored in JSON files:
 - `config_live.json`
 
 If `mt5_login`, `mt5_password`, `mt5_server` are empty, the bot uses your currently logged-in MT5 terminal session.
+
+Dynamic lot sizing setting:
+
+- `capital_base`: `"balance"` or `"equity"`
+  - `"equity"` = lot size updates with floating P/L in real time
+  - `"balance"` = lot size uses account balance only
 
 ---
 

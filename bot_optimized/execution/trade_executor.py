@@ -114,6 +114,7 @@ class TradeExecutor:
         symbol: str,
         signal: SignalResult,
         spread_points: float,
+        capital_for_sizing: float,
         current_balance: float,
     ) -> Tuple[bool, str]:
         if signal.signal not in {"buy", "sell"}:
@@ -146,7 +147,7 @@ class TradeExecutor:
 
         volume = self.sizer.calculate_volume(
             symbol=symbol,
-            balance=current_balance,
+            balance=capital_for_sizing,
             risk_percent=self.config.risk_per_trade,
             sl_distance_price=abs(price - sl),
         )

@@ -18,6 +18,7 @@ class BotConfig:
     timeframe: str
     higher_timeframe: str
     risk_per_trade: float
+    capital_base: str
     max_daily_loss: float
     max_open_trades: int
     max_spread_points: float
@@ -68,6 +69,7 @@ def load_config(config_path: str | Path) -> BotConfig:
         "timeframe",
         "higher_timeframe",
         "risk_per_trade",
+        "capital_base",
         "max_daily_loss",
         "max_open_trades",
         "max_spread_points",
@@ -94,6 +96,7 @@ def load_config(config_path: str | Path) -> BotConfig:
         timeframe=_validate_timeframe(str(payload["timeframe"]), "timeframe"),
         higher_timeframe=_validate_timeframe(str(payload["higher_timeframe"]), "higher_timeframe"),
         risk_per_trade=float(payload["risk_per_trade"]),
+        capital_base=str(payload["capital_base"]).strip().lower(),
         max_daily_loss=float(payload["max_daily_loss"]),
         max_open_trades=int(payload["max_open_trades"]),
         max_spread_points=float(payload["max_spread_points"]),
@@ -108,6 +111,8 @@ def load_config(config_path: str | Path) -> BotConfig:
 
     if not 0 < config.risk_per_trade <= 10:
         raise ValueError("risk_per_trade must be in range (0, 10]")
+    if config.capital_base not in {"balance", "equity"}:
+        raise ValueError("capital_base must be either 'balance' or 'equity'")
     if not 0 < config.max_daily_loss <= 20:
         raise ValueError("max_daily_loss must be in range (0, 20]")
     if config.max_open_trades <= 0:

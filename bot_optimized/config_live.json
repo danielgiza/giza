@@ -7,6 +7,7 @@
   "timeframe": "H4",
   "higher_timeframe": "D1",
   "risk_per_trade": 1.0,
+  "capital_base": "balance",
   "max_daily_loss": 3.0,
   "max_open_trades": 3,
   "max_spread_points": 35,

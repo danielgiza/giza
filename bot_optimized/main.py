@@ -61,6 +61,12 @@ def build_mode_label(backtest: bool, live_enabled: bool, account_real: bool) -> 
     return "DEMO/SAFE"
 
 
+def get_capital_for_sizing(config: BotConfig, account_info: object) -> float:
+    if config.capital_base == "equity":
+        return float(getattr(account_info, "equity", 0.0))
+    return float(getattr(account_info, "balance", 0.0))
+
+
 def render_dashboard(
     mode: str,
     config: BotConfig,
@@ -80,6 +86,7 @@ def render_dashboard(
     print(f"Monitored Symbols: {', '.join(config.symbols)}")
     print(f"Open Positions   : {open_positions_count}")
     print(f"Daily P/L        : {daily_pl:.2f}%")
+    print(f"Sizing Capital   : {config.capital_base.upper()}")
     print("-" * 80)
     print("SYMBOL   SIGNAL   RSI     ATR       SPREAD(points)   REASON")
 
@@ -221,10 +228,12 @@ def main() -> int:
                 if not trading_enabled:
                     continue
 
+                capital_for_sizing = get_capital_for_sizing(config, account)
                 ok, msg = executor.execute_signal(
                     symbol=symbol,
                     signal=signal,
                     spread_points=spread_points,
+                    capital_for_sizing=capital_for_sizing,
                     current_balance=float(getattr(account, "balance", 0.0)),
                 )
                 if not ok:
