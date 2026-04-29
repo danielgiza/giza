@@ -56,10 +56,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false)
   }, [])
 
-  const login = async (email: string, _password: string): Promise<{ success: boolean; message: string }> => {
+  const login = async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
     const users = JSON.parse(localStorage.getItem('qe_users') || '[]')
     const found = users.find((u: User & { password: string }) => u.email === email)
     if (!found) return { success: false, message: 'Invalid email or password.' }
+    if (found.password !== password) return { success: false, message: 'Invalid email or password.' }
     if (!found.emailVerified) return { success: false, message: 'Please verify your email first. Check your inbox.' }
     const u = { id: found.id, name: found.name, email: found.email, emailVerified: found.emailVerified }
     setUser(u)

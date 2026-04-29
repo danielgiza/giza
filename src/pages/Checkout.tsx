@@ -41,6 +41,9 @@ export default function Checkout() {
       if (!res.ok) throw new Error(data.detail || 'Payment failed')
       if (data.checkout_url) {
         window.location.href = data.checkout_url
+      } else {
+        setError('No checkout URL received. Please try again.')
+        setLoading(false)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
