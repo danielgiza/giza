@@ -52,10 +52,11 @@ export default function Login() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="your@email.com"
-                  className="input-field pl-10"
+                  className="input-field"
+                  style={{ paddingLeft: '2.75rem' }}
                   required
                 />
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               </div>
             </div>
             <div>

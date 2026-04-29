@@ -1,20 +1,25 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { downloadRobot } from '../services/downloadService'
 import {
   BarChart3, TrendingUp, TrendingDown, DollarSign, Activity,
-  Settings, LogOut, RefreshCw, Wifi, WifiOff, Clock, ArrowUpCircle,
-  ArrowDownCircle, Circle, AlertTriangle, CheckCircle, User
+  Settings, LogOut, RefreshCw, Wifi, WifiOff, AlertTriangle,
+  CheckCircle, User, Download, Package,
+  ArrowUpCircle, ArrowDownCircle, Circle, Clock
 } from 'lucide-react'
 
-interface MT5Account {
+const API_URL = import.meta.env.VITE_MT5_API_URL || ''
+
+interface MT5Data {
   login: string
   server: string
   name: string
   balance: number
   equity: number
   margin: number
-  freeMargin: number
+  free_margin: number
+  margin_level: number
   leverage: string
   currency: string
   type: 'demo' | 'live'
@@ -26,46 +31,14 @@ interface Position {
   symbol: string
   type: 'BUY' | 'SELL'
   volume: number
-  openPrice: number
-  currentPrice: number
+  open_price: number
+  current_price: number
   sl: number
   tp: number
   profit: number
-  openTime: string
+  open_time: string
   swap: number
   commission: number
-}
-
-const generatePositions = (): Position[] => {
-  const symbols = ['XAUUSD', 'EURUSD']
-  const positions: Position[] = []
-  const count = Math.floor(Math.random() * 4) + 1
-
-  for (let i = 0; i < count; i++) {
-    const symbol = symbols[Math.floor(Math.random() * symbols.length)]
-    const isBuy = Math.random() > 0.5
-    const isGold = symbol === 'XAUUSD'
-    const basePrice = isGold ? 2340 + Math.random() * 20 : 1.085 + Math.random() * 0.005
-    const spread = isGold ? Math.random() * 5 - 2.5 : Math.random() * 0.003 - 0.0015
-    const volume = isGold ? +(Math.random() * 0.5 + 0.01).toFixed(2) : +(Math.random() * 2 + 0.1).toFixed(2)
-    const profit = isBuy ? spread * volume * (isGold ? 100 : 100000) : -spread * volume * (isGold ? 100 : 100000)
-
-    positions.push({
-      ticket: 100000000 + Math.floor(Math.random() * 9000000),
-      symbol,
-      type: isBuy ? 'BUY' : 'SELL',
-      volume,
-      openPrice: +basePrice.toFixed(isGold ? 2 : 5),
-      currentPrice: +(basePrice + spread).toFixed(isGold ? 2 : 5),
-      sl: +(basePrice - (isBuy ? 1 : -1) * (isGold ? 10 : 0.005)).toFixed(isGold ? 2 : 5),
-      tp: +(basePrice + (isBuy ? 1 : -1) * (isGold ? 15 : 0.008)).toFixed(isGold ? 2 : 5),
-      profit: +profit.toFixed(2),
-      openTime: new Date(Date.now() - Math.random() * 3600000).toISOString(),
-      swap: +(Math.random() * 2 - 1).toFixed(2),
-      commission: +(-Math.random() * 3).toFixed(2),
-    })
-  }
-  return positions
 }
 
 export default function Dashboard() {
@@ -76,13 +49,31 @@ export default function Dashboard() {
   const [mt5Server, setMt5Server] = useState('')
   const [accountType, setAccountType] = useState<'demo' | 'live'>('demo')
   const [connecting, setConnecting] = useState(false)
-  const [account, setAccount] = useState<MT5Account | null>(null)
+  const [connected, setConnected] = useState(false)
+  const [mt5Data, setMt5Data] = useState<MT5Data | null>(null)
   const [positions, setPositions] = useState<Position[]>([])
   const [error, setError] = useState('')
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const [backendAvailable, setBackendAvailable] = useState<boolean | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const purchasedPlan = localStorage.getItem('qe_purchased_plan')
+  const paymentConfirmed = !!purchasedPlan
 
   useEffect(() => {
     if (!user) navigate('/login')
   }, [user, navigate])
+
+  // Check if backend is available
+  useEffect(() => {
+    if (!API_URL) {
+      setBackendAvailable(false)
+      return
+    }
+    fetch(`${API_URL}/health`)
+      .then(r => { if (r.ok) setBackendAvailable(true); else setBackendAvailable(false) })
+      .catch(() => setBackendAvailable(false))
+  }, [])
 
   const connectMT5 = async () => {
     if (!mt5Login || !mt5Password || !mt5Server) {
@@ -91,52 +82,85 @@ export default function Dashboard() {
     }
     setError('')
     setConnecting(true)
-    await new Promise(r => setTimeout(r, 2000))
 
-    const balance = accountType === 'demo' ? 10000 + Math.random() * 5000 : 1000 + Math.random() * 9000
-    const unrealizedPL = (Math.random() - 0.3) * 500
+    if (!API_URL || !backendAvailable) {
+      // No backend - just save connection info, no fake data
+      setConnected(true)
+      setMt5Data({
+        login: mt5Login,
+        server: mt5Server,
+        name: user?.name || 'Trader',
+        balance: 0,
+        equity: 0,
+        margin: 0,
+        free_margin: 0,
+        margin_level: 0,
+        leverage: '-',
+        currency: 'USD',
+        type: accountType,
+        connected: true,
+      })
+      setPositions([])
+      setConnecting(false)
+      return
+    }
 
-    setAccount({
-      login: mt5Login,
-      server: mt5Server,
-      name: user?.name || 'Trader',
-      balance: +balance.toFixed(2),
-      equity: +(balance + unrealizedPL).toFixed(2),
-      margin: +(Math.random() * 500 + 50).toFixed(2),
-      freeMargin: +(balance + unrealizedPL - Math.random() * 500).toFixed(2),
-      leverage: '1:500',
-      currency: 'USD',
-      type: accountType,
-      connected: true,
-    })
-    setPositions(generatePositions())
+    try {
+      const res = await fetch(`${API_URL}/connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          login: parseInt(mt5Login),
+          password: mt5Password,
+          server: mt5Server,
+          type: accountType,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.detail || 'Failed to connect to MT5. Check your credentials.')
+        setConnecting(false)
+        return
+      }
+      setMt5Data(data.account)
+      setPositions(data.positions || [])
+      setConnected(true)
+      setLastUpdate(new Date())
+    } catch {
+      setError('Cannot reach MT5 server. Please try again later.')
+    }
     setConnecting(false)
   }
 
-  const updatePositions = useCallback(() => {
-    if (!account) return
-    setPositions(prev => prev.map(p => {
-      const isGold = p.symbol === 'XAUUSD'
-      const change = isGold ? (Math.random() - 0.5) * 2 : (Math.random() - 0.5) * 0.001
-      const newPrice = +(p.currentPrice + change).toFixed(isGold ? 2 : 5)
-      const profit = p.type === 'BUY'
-        ? (newPrice - p.openPrice) * p.volume * (isGold ? 100 : 100000)
-        : (p.openPrice - newPrice) * p.volume * (isGold ? 100 : 100000)
-      return { ...p, currentPrice: newPrice, profit: +profit.toFixed(2) }
-    }))
-
-    setAccount(prev => {
-      if (!prev) return prev
-      const totalProfit = positions.reduce((sum, p) => sum + p.profit, 0)
-      return { ...prev, equity: +(prev.balance + totalProfit).toFixed(2) }
-    })
-  }, [account, positions])
+  const fetchLiveData = useCallback(async () => {
+    if (!API_URL || !backendAvailable || !connected) return
+    try {
+      const res = await fetch(`${API_URL}/account`)
+      if (res.ok) {
+        const data = await res.json()
+        setMt5Data(data.account)
+        setPositions(data.positions || [])
+        setLastUpdate(new Date())
+      }
+    } catch { /* silent refresh failure */ }
+  }, [connected, backendAvailable])
 
   useEffect(() => {
-    if (!account?.connected) return
-    const interval = setInterval(updatePositions, 2000)
-    return () => clearInterval(interval)
-  }, [account?.connected, updatePositions])
+    if (!connected || !API_URL || !backendAvailable) return
+    intervalRef.current = setInterval(fetchLiveData, 3000)
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+  }, [connected, backendAvailable, fetchLiveData])
+
+  const disconnect = () => {
+    setConnected(false)
+    setMt5Data(null)
+    setPositions([])
+    setLastUpdate(null)
+    if (intervalRef.current) clearInterval(intervalRef.current)
+    if (API_URL && backendAvailable) {
+      fetch(`${API_URL}/disconnect`, { method: 'POST' }).catch(() => {})
+    }
+  }
 
   const totalProfit = positions.reduce((sum, p) => sum + p.profit, 0)
   const totalSwap = positions.reduce((sum, p) => sum + p.swap, 0)
@@ -159,13 +183,13 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {account?.connected && (
+            {connected && (
               <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full glass text-xs font-medium">
                 <Wifi className="w-3.5 h-3.5 text-success" />
                 <span className="text-success">Connected</span>
                 <span className="text-gray-500">|</span>
-                <span className={`${account.type === 'live' ? 'text-accent' : 'text-primary-light'}`}>
-                  {account.type === 'live' ? 'LIVE' : 'DEMO'}
+                <span className={accountType === 'live' ? 'text-accent' : 'text-primary-light'}>
+                  {accountType === 'live' ? 'LIVE' : 'DEMO'}
                 </span>
               </span>
             )}
@@ -175,7 +199,40 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {!account?.connected ? (
+        {/* Robot Download Section - only visible after purchase */}
+        {paymentConfirmed && (
+          <div className="mb-6">
+            <div className="card border-success/30 animate-fade-in">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-success/20 flex items-center justify-center shrink-0">
+                    <Package className="w-7 h-7 text-success" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-lg font-bold text-white">Quantum Edge V2.0</h3>
+                      <span className="px-2 py-0.5 rounded-full bg-success/20 text-success text-xs font-bold">
+                        {purchasedPlan?.toUpperCase()} PLAN
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-400">Your robot is ready to download. Extract the ZIP and follow the README instructions.</p>
+                  </div>
+                </div>
+                <button onClick={() => downloadRobot()} className="btn-primary shrink-0">
+                  <Download className="w-5 h-5" /> Download ZIP
+                </button>
+              </div>
+              <div className="mt-4 pt-4 border-t border-white/5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <div><span className="text-gray-500">Version:</span> <span className="text-white font-medium">2.0.0</span></div>
+                <div><span className="text-gray-500">Pairs:</span> <span className="text-white font-medium">XAUUSD</span></div>
+                <div><span className="text-gray-500">Platform:</span> <span className="text-white font-medium">MT5</span></div>
+                <div><span className="text-gray-500">License:</span> <span className="text-success font-medium">Active</span></div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!connected ? (
           /* MT5 Connection Form */
           <div className="max-w-lg mx-auto animate-fade-in-up">
             <div className="card !p-8">
@@ -186,6 +243,13 @@ export default function Dashboard() {
                 <h2 className="text-2xl font-black text-white mb-1">Connect MT5 Account</h2>
                 <p className="text-gray-400 text-sm">Enter your MetaTrader 5 credentials to connect</p>
               </div>
+
+              {!backendAvailable && backendAvailable !== null && (
+                <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 mb-4 text-sm text-accent flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <span className="text-gray-300">MT5 backend server is not connected. Account data will not show live balances until the backend is configured.</span>
+                </div>
+              )}
 
               {error && (
                 <div className="bg-danger/10 border border-danger/30 rounded-lg p-3 mb-4 text-sm text-danger flex items-center gap-2">
@@ -243,24 +307,39 @@ export default function Dashboard() {
           /* Connected Dashboard */
           <div className="animate-fade-in">
             {/* Account Info Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              {[
-                { label: 'Balance', value: `$${account.balance.toLocaleString()}`, icon: DollarSign, color: 'text-white' },
-                { label: 'Equity', value: `$${account.equity.toLocaleString()}`, icon: BarChart3, color: account.equity >= account.balance ? 'text-success' : 'text-danger' },
-                { label: 'Free Margin', value: `$${account.freeMargin.toLocaleString()}`, icon: Activity, color: 'text-primary-light' },
-                { label: 'Floating P/L', value: `${totalProfit >= 0 ? '+' : ''}$${totalProfit.toFixed(2)}`, icon: totalProfit >= 0 ? TrendingUp : TrendingDown, color: totalProfit >= 0 ? 'text-success' : 'text-danger' },
-              ].map((card, i) => (
-                <div key={i} className="card">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-gray-500 uppercase tracking-wider">{card.label}</span>
-                    <card.icon className={`w-4 h-4 ${card.color}`} />
+            {backendAvailable && mt5Data ? (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                {[
+                  { label: 'Balance', value: `$${mt5Data.balance.toLocaleString()}`, icon: DollarSign, color: 'text-white' },
+                  { label: 'Equity', value: `$${mt5Data.equity.toLocaleString()}`, icon: BarChart3, color: mt5Data.equity >= mt5Data.balance ? 'text-success' : 'text-danger' },
+                  { label: 'Free Margin', value: `$${mt5Data.free_margin.toLocaleString()}`, icon: Activity, color: 'text-primary-light' },
+                  { label: 'Floating P/L', value: `${totalProfit >= 0 ? '+' : ''}$${totalProfit.toFixed(2)}`, icon: totalProfit >= 0 ? TrendingUp : TrendingDown, color: totalProfit >= 0 ? 'text-success' : 'text-danger' },
+                ].map((card, i) => (
+                  <div key={i} className="card">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-gray-500 uppercase tracking-wider">{card.label}</span>
+                      <card.icon className={`w-4 h-4 ${card.color}`} />
+                    </div>
+                    <p className={`text-xl font-black ${card.color}`}>{card.value}</p>
                   </div>
-                  <p className={`text-xl font-black ${card.color}`}>{card.value}</p>
+                ))}
+              </div>
+            ) : (
+              <div className="card mb-6 border-accent/20">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-accent mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-white font-medium mb-1">Live data unavailable</p>
+                    <p className="text-sm text-gray-400">
+                      The MT5 backend server is not connected. Balance, equity, and live positions will appear here once the backend is running. 
+                      Your connection details are saved below.
+                    </p>
+                  </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
 
-            {/* Account Details */}
+            {/* Account Details + Positions */}
             <div className="grid lg:grid-cols-3 gap-4 mb-6">
               <div className="card lg:col-span-1">
                 <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
@@ -268,22 +347,30 @@ export default function Dashboard() {
                 </h3>
                 <div className="space-y-2 text-sm">
                   {[
-                    { label: 'Account', value: account.login },
-                    { label: 'Name', value: account.name },
-                    { label: 'Server', value: account.server },
-                    { label: 'Type', value: account.type.toUpperCase(), highlight: account.type === 'live' },
-                    { label: 'Leverage', value: account.leverage },
-                    { label: 'Currency', value: account.currency },
-                    { label: 'Margin Used', value: `$${account.margin.toLocaleString()}` },
+                    { label: 'Account', value: mt5Data?.login || mt5Login },
+                    { label: 'Name', value: mt5Data?.name || user.name },
+                    { label: 'Server', value: mt5Data?.server || mt5Server },
+                    { label: 'Type', value: accountType.toUpperCase(), highlight: accountType === 'live' },
+                    { label: 'Leverage', value: mt5Data?.leverage || '-' },
+                    { label: 'Currency', value: mt5Data?.currency || 'USD' },
+                    ...(backendAvailable && mt5Data ? [
+                      { label: 'Margin Used', value: `$${mt5Data.margin.toLocaleString()}` },
+                      { label: 'Margin Level', value: mt5Data.margin_level > 0 ? `${mt5Data.margin_level.toFixed(1)}%` : '-' },
+                    ] : []),
                   ].map((item, i) => (
                     <div key={i} className="flex justify-between">
                       <span className="text-gray-500">{item.label}</span>
-                      <span className={`font-medium ${item.highlight ? 'text-accent' : 'text-gray-300'}`}>{item.value}</span>
+                      <span className={`font-medium ${'highlight' in item && item.highlight ? 'text-accent' : 'text-gray-300'}`}>{item.value}</span>
                     </div>
                   ))}
                 </div>
+                {lastUpdate && (
+                  <p className="text-xs text-gray-600 mt-3 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Last update: {lastUpdate.toLocaleTimeString()}
+                  </p>
+                )}
                 <button
-                  onClick={() => { setAccount(null); setPositions([]) }}
+                  onClick={disconnect}
                   className="mt-4 w-full py-2 rounded-lg bg-danger/10 text-danger text-sm font-medium hover:bg-danger/20 transition flex items-center justify-center gap-2"
                 >
                   <WifiOff className="w-4 h-4" /> Disconnect
@@ -295,18 +382,28 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                     <Activity className="w-4 h-4 text-success" /> Open Positions
-                    <span className="px-2 py-0.5 rounded-full bg-success/20 text-success text-xs">{positions.length} active</span>
+                    {positions.length > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-success/20 text-success text-xs">{positions.length} active</span>
+                    )}
                   </h3>
-                  <div className="flex items-center gap-1 text-xs text-gray-500">
-                    <Circle className="w-2 h-2 fill-success text-success animate-pulse" />
-                    Live updating
-                  </div>
+                  {backendAvailable && connected && (
+                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                      <Circle className="w-2 h-2 fill-success text-success animate-pulse" />
+                      Live updating
+                    </div>
+                  )}
                 </div>
 
-                {positions.length === 0 ? (
+                {!backendAvailable ? (
                   <div className="text-center py-8 text-gray-500">
                     <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p>No open positions. Robot is scanning for opportunities...</p>
+                    <p className="mb-1">Waiting for MT5 backend connection...</p>
+                    <p className="text-xs text-gray-600">Live positions will appear here when the backend server is running and connected to your MT5 account.</p>
+                  </div>
+                ) : positions.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>No open positions at the moment.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -334,8 +431,8 @@ export default function Dashboard() {
                               </span>
                             </td>
                             <td className="py-2.5 text-right text-gray-300">{p.volume}</td>
-                            <td className="py-2.5 text-right text-gray-400">{p.openPrice}</td>
-                            <td className="py-2.5 text-right text-white font-medium">{p.currentPrice}</td>
+                            <td className="py-2.5 text-right text-gray-400">{p.open_price}</td>
+                            <td className="py-2.5 text-right text-white font-medium">{p.current_price}</td>
                             <td className="py-2.5 text-right text-danger/70">{p.sl}</td>
                             <td className="py-2.5 text-right text-success/70">{p.tp}</td>
                             <td className={`py-2.5 text-right font-bold ${p.profit >= 0 ? 'text-success' : 'text-danger'}`}>
@@ -371,10 +468,10 @@ export default function Dashboard() {
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                  { label: 'Status', value: 'Running', color: 'text-success' },
-                  { label: 'Strategy', value: 'Phoenix Scalper V2.0', color: 'text-primary-light' },
-                  { label: 'Pairs', value: 'XAUUSD, EURUSD', color: 'text-gray-300' },
-                  { label: 'Uptime', value: `${Math.floor(Math.random() * 48 + 1)}h ${Math.floor(Math.random() * 60)}m`, color: 'text-gray-300' },
+                  { label: 'Status', value: backendAvailable ? 'Running' : 'Awaiting Backend', color: backendAvailable ? 'text-success' : 'text-accent' },
+                  { label: 'Strategy', value: 'Quantum Edge V2.0', color: 'text-primary-light' },
+                  { label: 'Pairs', value: 'XAUUSD', color: 'text-gray-300' },
+                  { label: 'Connection', value: backendAvailable ? 'Live' : 'Offline', color: backendAvailable ? 'text-success' : 'text-gray-500' },
                 ].map((item, i) => (
                   <div key={i}>
                     <p className="text-xs text-gray-500 mb-0.5">{item.label}</p>

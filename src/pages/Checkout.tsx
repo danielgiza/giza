@@ -1,6 +1,9 @@
-import { useState, useEffect, type FormEvent } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { CreditCard, Lock, ShieldCheck, ArrowLeft, CheckCircle, RefreshCw } from 'lucide-react'
+import { ShieldCheck, ArrowLeft, RefreshCw, Lock, CreditCard } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+
+const STRIPE_API_URL = 'https://giza-stripe-backend-cjbnzsld.fly.dev'
 
 const plans: Record<string, { name: string; price: number }> = {
   starter: { name: 'Starter', price: 299 },
@@ -9,67 +12,40 @@ const plans: Record<string, { name: string; price: number }> = {
 }
 
 export default function Checkout() {
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const planId = searchParams.get('plan') || ''
   const plan = plans[planId]
-
-  const [cardNumber, setCardNumber] = useState('')
-  const [cardName, setCardName] = useState('')
-  const [expiry, setExpiry] = useState('')
-  const [cvc, setCvc] = useState('')
-  const [email, setEmail] = useState('')
-  const [processing, setProcessing] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (!user) navigate('/login')
     if (!plan) navigate('/pricing')
-  }, [plan, navigate])
+  }, [user, plan, navigate])
 
-  const formatCardNumber = (val: string) => {
-    const digits = val.replace(/\D/g, '').slice(0, 16)
-    return digits.replace(/(.{4})/g, '$1 ').trim()
-  }
-
-  const formatExpiry = (val: string) => {
-    const digits = val.replace(/\D/g, '').slice(0, 4)
-    if (digits.length >= 3) return digits.slice(0, 2) + '/' + digits.slice(2)
-    return digits
-  }
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
+  const handleStripeCheckout = async () => {
+    setLoading(true)
     setError('')
-
-    if (!email.trim() || !email.includes('@')) {
-      setError('Please enter a valid email address.')
-      return
+    try {
+      const res = await fetch(`${STRIPE_API_URL}/create-checkout-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plan_id: planId,
+          customer_email: user?.email || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Payment failed')
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+      setLoading(false)
     }
-    const digits = cardNumber.replace(/\s/g, '')
-    if (digits.length < 16) {
-      setError('Please enter a valid card number.')
-      return
-    }
-    if (!cardName.trim()) {
-      setError('Please enter the cardholder name.')
-      return
-    }
-    if (expiry.length < 5) {
-      setError('Please enter a valid expiry date (MM/YY).')
-      return
-    }
-    if (cvc.length < 3) {
-      setError('Please enter a valid CVC code.')
-      return
-    }
-
-    setProcessing(true)
-    // Simulate payment processing (will be replaced with real Stripe integration)
-    await new Promise(r => setTimeout(r, 3000))
-    localStorage.setItem('qe_purchased_plan', planId)
-    localStorage.setItem('qe_customer_email', email)
-    setProcessing(false)
-    navigate('/payment-success')
   }
 
   if (!plan) return null
@@ -102,8 +78,12 @@ export default function Checkout() {
         <div className="card !p-6">
           <div className="flex items-center gap-2 mb-5">
             <CreditCard className="w-5 h-5 text-primary-light" />
-            <h2 className="text-lg font-bold text-white">Payment Details</h2>
+            <h2 className="text-lg font-bold text-white">Secure Payment</h2>
           </div>
+
+          <p className="text-gray-400 text-sm mb-5">
+            You will be redirected to Stripe's secure checkout page to complete your payment. Your card details are handled entirely by Stripe.
+          </p>
 
           {error && (
             <div className="bg-danger/10 border border-danger/30 rounded-lg p-3 mb-4 text-sm text-danger">
@@ -111,93 +91,24 @@ export default function Checkout() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                className="input-field"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Card Number</label>
-              <input
-                type="text"
-                value={cardNumber}
-                onChange={e => setCardNumber(formatCardNumber(e.target.value))}
-                placeholder="1234 5678 9012 3456"
-                className="input-field"
-                maxLength={19}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Cardholder Name</label>
-              <input
-                type="text"
-                value={cardName}
-                onChange={e => setCardName(e.target.value)}
-                placeholder="John Doe"
-                className="input-field"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Expiry Date</label>
-                <input
-                  type="text"
-                  value={expiry}
-                  onChange={e => setExpiry(formatExpiry(e.target.value))}
-                  placeholder="MM/YY"
-                  className="input-field"
-                  maxLength={5}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">CVC</label>
-                <input
-                  type="text"
-                  value={cvc}
-                  onChange={e => setCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  placeholder="123"
-                  className="input-field"
-                  maxLength={4}
-                  required
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={processing}
-              className="btn-primary w-full justify-center !py-3.5 !text-base disabled:opacity-50"
-            >
-              {processing ? (
-                <><RefreshCw className="w-5 h-5 animate-spin" /> Processing Payment...</>
-              ) : (
-                <><ShieldCheck className="w-5 h-5" /> Pay ${plan.price}</>
-              )}
-            </button>
-          </form>
+          <button
+            onClick={handleStripeCheckout}
+            disabled={loading}
+            className="btn-primary w-full justify-center !py-3.5 !text-base disabled:opacity-50"
+          >
+            {loading ? (
+              <><RefreshCw className="w-5 h-5 animate-spin" /> Redirecting to Stripe...</>
+            ) : (
+              <><ShieldCheck className="w-5 h-5" /> Pay ${plan.price} with Stripe</>
+            )}
+          </button>
 
           <div className="flex items-center justify-center gap-4 mt-5 pt-4 border-t border-white/10">
             <div className="flex items-center gap-1.5 text-xs text-gray-500">
-              <Lock className="w-3.5 h-3.5" /> SSL Encrypted
+              <Lock className="w-3.5 h-3.5" /> 256-bit SSL
             </div>
             <div className="flex items-center gap-1.5 text-xs text-gray-500">
-              <ShieldCheck className="w-3.5 h-3.5" /> Secure Payment
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-gray-500">
-              <CheckCircle className="w-3.5 h-3.5" /> Money-Back Guarantee
+              <ShieldCheck className="w-3.5 h-3.5" /> Powered by Stripe
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { sendPasswordResetEmail, sendVerificationEmail } from '../services/emailService'
 
 interface User {
   id: string
@@ -26,11 +27,28 @@ export function useAuth() {
   return ctx
 }
 
+const AUTH_VERSION = '5'
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const storedVersion = localStorage.getItem('qe_auth_version')
+    if (storedVersion !== AUTH_VERSION) {
+      localStorage.removeItem('qe_users')
+      localStorage.removeItem('qe_user')
+      localStorage.removeItem('qe_payment_confirmed')
+      localStorage.removeItem('qe_purchased_plan')
+      const keys = Object.keys(localStorage)
+      for (const k of keys) {
+        if (k.startsWith('qe_verify_') || k.startsWith('qe_reset_')) {
+          localStorage.removeItem(k)
+        }
+      }
+      localStorage.setItem('qe_auth_version', AUTH_VERSION)
+    }
+
     const stored = localStorage.getItem('qe_user')
     if (stored) {
       try { setUser(JSON.parse(stored)) } catch { /* ignore */ }
@@ -60,7 +78,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     users.push(newUser)
     localStorage.setItem('qe_users', JSON.stringify(users))
     localStorage.setItem('qe_verify_' + token, email)
-    return { success: true, message: 'Account created! Please check your email to verify your account. Your verification link: /verify-email?token=' + token }
+
+    const verifyLink = window.location.origin + '/verify-email?token=' + token
+    const emailSent = await sendVerificationEmail(email, name, verifyLink)
+
+    if (emailSent) {
+      return { success: true, message: token }
+    }
+    return { success: true, message: 'EMAIL_FAILED:' + token }
   }
 
   const logout = () => {
@@ -70,10 +95,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const forgotPassword = async (email: string): Promise<{ success: boolean; message: string }> => {
     const users = JSON.parse(localStorage.getItem('qe_users') || '[]')
-    const found = users.find((u: { email: string }) => u.email === email)
+    const found = users.find((u: { email: string; name: string }) => u.email === email)
     if (!found) return { success: true, message: 'If an account exists with this email, a password reset link has been sent.' }
     const token = crypto.randomUUID()
     localStorage.setItem('qe_reset_' + token, email)
+
+    const resetLink = window.location.origin + '/reset-password?token=' + token
+    const emailSent = await sendPasswordResetEmail(email, found.name, resetLink)
+
+    if (emailSent) {
+      return { success: true, message: 'Password reset link sent to your email! Please check your inbox.' }
+    }
     return { success: true, message: 'Password reset link sent! Check your email. Reset link: /reset-password?token=' + token }
   }
 

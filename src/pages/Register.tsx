@@ -10,7 +10,7 @@ export default function Register() {
   const [showPass, setShowPass] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
-  const [verifyLink, setVerifyLink] = useState('')
+  const [verifyToken, setVerifyToken] = useState('')
   const [loading, setLoading] = useState(false)
   const { register } = useAuth()
 
@@ -25,9 +25,12 @@ export default function Register() {
     const result = await register(name, email, password)
     setLoading(false)
     if (result.success) {
+      if (result.message.startsWith('EMAIL_FAILED:')) {
+        setVerifyToken(result.message.replace('EMAIL_FAILED:', ''))
+      } else {
+        setVerifyToken(result.message)
+      }
       setSuccess(true)
-      const linkMatch = result.message.match(/(\/verify-email\?token=[^\s]+)/)
-      if (linkMatch) setVerifyLink(linkMatch[1])
     } else {
       setError(result.message)
     }
@@ -46,19 +49,22 @@ export default function Register() {
               We've sent a verification link to <span className="text-white font-medium">{email}</span>. Please check your inbox and click the link to verify your account.
             </p>
             <p className="text-sm text-gray-500 mb-4">
-              You must verify your email before you can sign in. If you don't see the email, check your spam folder.
+              Click the button below to verify your account.
             </p>
-            {verifyLink && (
-              <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 mb-4">
-                <p className="text-xs text-gray-400 mb-2">Demo: In production, this link would be sent via email:</p>
-                <Link to={verifyLink} className="text-primary-light text-sm underline break-all hover:text-primary">
-                  {window.location.origin}{verifyLink}
+
+            <div className="flex flex-col gap-3">
+              {verifyToken && (
+                <Link
+                  to={`/verify-email?token=${verifyToken}`}
+                  className="btn-primary w-full justify-center !py-3"
+                >
+                  <CheckCircle className="w-5 h-5" /> Verify Account Now
                 </Link>
-              </div>
-            )}
-            <Link to="/login" className="text-primary-light text-sm hover:text-primary transition">
-              Go to Login
-            </Link>
+              )}
+              <Link to="/login" className="text-primary-light text-sm hover:text-primary transition">
+                Go to Login
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -87,15 +93,15 @@ export default function Register() {
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5">Full Name</label>
               <div className="relative">
-                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="John Doe" className="input-field pl-10" required />
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="John Doe" className="input-field" style={{ paddingLeft: '2.75rem' }} required />
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
               <div className="relative">
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" className="input-field pl-10" required />
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" className="input-field" style={{ paddingLeft: '2.75rem' }} required />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               </div>
             </div>
             <div>

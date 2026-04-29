@@ -53,7 +53,7 @@ export default function Footer() {
 
         <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-gray-500">&copy; {new Date().getFullYear()} Quantum Edge Trader. All rights reserved.</p>
-          <p className="text-sm text-gray-500">Founded by <span className="text-accent font-medium">Daniel Giza</span></p>
+          <p className="text-sm text-gray-500">Founded by <span className="text-accent font-medium">Daniel G.</span></p>
         </div>
 
         <p className="text-xs text-gray-600 text-center mt-6 max-w-3xl mx-auto leading-relaxed">

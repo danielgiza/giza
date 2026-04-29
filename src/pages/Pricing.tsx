@@ -1,6 +1,7 @@
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Check, Crown, Lock, ShieldCheck } from 'lucide-react'
 import { useInView } from '../hooks/useInView'
+import { useAuth } from '../context/AuthContext'
 
 const plans = [
   {
@@ -32,7 +33,17 @@ function AnimatedSection({ children, className = '', delay = '' }: { children: R
 }
 
 export default function Pricing() {
+  const { user } = useAuth()
   const navigate = useNavigate()
+  const handlePurchase = (planId: string) => {
+    if (!user) {
+      navigate('/register')
+      return
+    }
+    navigate(`/checkout?plan=${planId}`)
+  }
+
+  const alreadyPurchased = !!localStorage.getItem('qe_purchased_plan')
 
   return (
     <section className="pt-28 pb-20 px-4 min-h-screen">
@@ -68,12 +79,21 @@ export default function Pricing() {
                     </li>
                   ))}
                 </ul>
-                <button
-                  onClick={() => navigate(`/checkout?plan=${plan.id}`)}
-                  className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${plan.popular ? 'btn-primary justify-center' : 'bg-surface-lighter text-white hover:bg-primary/20'}`}
-                >
-                  <ShieldCheck className="w-5 h-5" /> Buy {plan.name}
-                </button>
+                {alreadyPurchased ? (
+                  <Link
+                    to="/dashboard"
+                    className="block text-center py-3 rounded-xl font-bold bg-success/20 text-success"
+                  >
+                    Go to Dashboard
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => handlePurchase(plan.id)}
+                    className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${plan.popular ? 'btn-primary justify-center' : 'bg-surface-lighter text-white hover:bg-primary/20'}`}
+                  >
+                    <ShieldCheck className="w-5 h-5" /> Buy {plan.name}
+                  </button>
+                )}
               </div>
             </AnimatedSection>
           ))}
