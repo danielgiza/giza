@@ -21,7 +21,7 @@ export default function Checkout() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!user) navigate('/login')
+    if (!user) { navigate('/login'); return }
     if (!plan) navigate('/pricing')
   }, [user, plan, navigate])
 

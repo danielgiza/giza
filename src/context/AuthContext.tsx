@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
 import { sendPasswordResetEmail, sendVerificationEmail } from '../services/emailService'
 
 interface User {
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false)
   }, [])
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
+  const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
     const users = JSON.parse(localStorage.getItem('qe_users') || '[]')
     const found = users.find((u: User & { password: string }) => u.email === email)
     if (!found) return { success: false, message: 'Invalid email or password.' }
@@ -66,9 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u)
     localStorage.setItem('qe_user', JSON.stringify(u))
     return { success: true, message: 'Login successful!' }
-  }
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  const register = async (name: string, email: string, password: string): Promise<{ success: boolean; message: string }> => {
+  const register = useCallback(async (name: string, email: string, password: string): Promise<{ success: boolean; message: string }> => {
     const users = JSON.parse(localStorage.getItem('qe_users') || '[]')
     if (users.find((u: { email: string }) => u.email === email)) {
       return { success: false, message: 'An account with this email already exists.' }
@@ -87,14 +87,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: true, message: token }
     }
     return { success: true, message: 'EMAIL_FAILED:' + token }
-  }
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null)
     localStorage.removeItem('qe_user')
-  }
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  const forgotPassword = async (email: string): Promise<{ success: boolean; message: string }> => {
+  const forgotPassword = useCallback(async (email: string): Promise<{ success: boolean; message: string }> => {
     const users = JSON.parse(localStorage.getItem('qe_users') || '[]')
     const found = users.find((u: { email: string; name: string }) => u.email === email)
     if (!found) return { success: true, message: 'If an account exists with this email, a password reset link has been sent.' }
@@ -107,10 +107,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (emailSent) {
       return { success: true, message: 'Password reset link sent to your email! Please check your inbox.' }
     }
-    return { success: true, message: 'Password reset link sent! Check your email. Reset link: /reset-password?token=' + token }
-  }
+    return { success: true, message: 'Password reset link sent to your email! Please check your inbox and spam folder.' }
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  const resetPassword = async (token: string, password: string): Promise<{ success: boolean; message: string }> => {
+  const resetPassword = useCallback(async (token: string, password: string): Promise<{ success: boolean; message: string }> => {
     const email = localStorage.getItem('qe_reset_' + token)
     if (!email) return { success: false, message: 'Invalid or expired reset link.' }
     const users = JSON.parse(localStorage.getItem('qe_users') || '[]')
@@ -120,9 +120,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('qe_users', JSON.stringify(users))
     localStorage.removeItem('qe_reset_' + token)
     return { success: true, message: 'Password reset successfully! You can now sign in.' }
-  }
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  const verifyEmail = async (token: string): Promise<{ success: boolean; message: string }> => {
+  const verifyEmail = useCallback(async (token: string): Promise<{ success: boolean; message: string }> => {
     const email = localStorage.getItem('qe_verify_' + token)
     if (!email) return { success: false, message: 'Invalid or expired verification link.' }
     const users = JSON.parse(localStorage.getItem('qe_users') || '[]')
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('qe_users', JSON.stringify(users))
     localStorage.removeItem('qe_verify_' + token)
     return { success: true, message: 'Email verified successfully! You can now sign in.' }
-  }
+  }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <AuthContext.Provider value={{ user, loading, login, register, logout, forgotPassword, resetPassword, verifyEmail }}>
