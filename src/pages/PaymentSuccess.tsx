@@ -40,7 +40,7 @@ export default function PaymentSuccess() {
         const res = await fetch(`${STRIPE_API_URL}/verify-session/${sessionId}`)
         const data = await res.json()
         if (data.paid) {
-          const plan = data.plan_id || planFromUrl || 'starter'
+          const plan = data.plan_id || planFromUrl
           if (!plan) {
             setError('Payment confirmed but plan info is missing. Please contact support.')
             return
