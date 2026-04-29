@@ -55,6 +55,7 @@ export default function Dashboard() {
   const [error, setError] = useState('')
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [backendAvailable, setBackendAvailable] = useState<boolean | null>(null)
+  const [sessionToken, setSessionToken] = useState('')
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const purchasedPlan = localStorage.getItem('qe_purchased_plan')
@@ -124,6 +125,7 @@ export default function Dashboard() {
       }
       setMt5Data(data.account)
       setPositions(data.positions || [])
+      if (data.session_token) setSessionToken(data.session_token)
       setConnected(true)
       setLastUpdate(new Date())
     } catch {
@@ -133,9 +135,9 @@ export default function Dashboard() {
   }
 
   const fetchLiveData = useCallback(async () => {
-    if (!API_URL || !backendAvailable || !connected) return
+    if (!API_URL || !backendAvailable || !connected || !sessionToken) return
     try {
-      const res = await fetch(`${API_URL}/account`)
+      const res = await fetch(`${API_URL}/account?session_token=${sessionToken}`)
       if (res.ok) {
         const data = await res.json()
         setMt5Data(data.account)
@@ -143,7 +145,7 @@ export default function Dashboard() {
         setLastUpdate(new Date())
       }
     } catch { /* silent refresh failure */ }
-  }, [connected, backendAvailable])
+  }, [connected, backendAvailable, sessionToken])
 
   useEffect(() => {
     if (!connected || !API_URL || !backendAvailable) return
@@ -157,9 +159,10 @@ export default function Dashboard() {
     setPositions([])
     setLastUpdate(null)
     if (intervalRef.current) clearInterval(intervalRef.current)
-    if (API_URL && backendAvailable) {
-      fetch(`${API_URL}/disconnect`, { method: 'POST' }).catch(() => {})
+    if (API_URL && backendAvailable && sessionToken) {
+      fetch(`${API_URL}/disconnect?session_token=${sessionToken}`, { method: 'POST' }).catch(() => {})
     }
+    setSessionToken('')
   }
 
   const totalProfit = positions.reduce((sum, p) => sum + p.profit, 0)
