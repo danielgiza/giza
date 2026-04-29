@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Menu, X, Zap } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
 
 const navLinks = [
   { label: 'Home', to: '/' },
@@ -13,7 +12,6 @@ export default function Navbar() {
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const { pathname } = useLocation()
-  const { user, logout } = useAuth()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -44,17 +42,7 @@ export default function Navbar() {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            {user ? (
-              <>
-                <Link to="/dashboard" className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition">Dashboard</Link>
-                <button onClick={logout} className="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition">Logout</button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition">Login</Link>
-                <Link to="/register" className="btn-primary !py-2 !px-5 !text-sm">Get Started</Link>
-              </>
-            )}
+            <Link to="/pricing" className="btn-primary !py-2 !px-5 !text-sm">Get Started</Link>
           </div>
 
           <button onClick={() => setOpen(!open)} className="md:hidden p-2 text-gray-300 hover:text-white">
@@ -72,18 +60,8 @@ export default function Navbar() {
                 {l.label}
               </Link>
             ))}
-            <div className="pt-2 border-t border-white/10 space-y-2">
-              {user ? (
-                <>
-                  <Link to="/dashboard" className="block px-4 py-3 text-sm font-medium text-gray-300 hover:bg-white/5 rounded-lg">Dashboard</Link>
-                  <button onClick={logout} className="block w-full text-left px-4 py-3 text-sm font-medium text-gray-400 hover:bg-white/5 rounded-lg">Logout</button>
-                </>
-              ) : (
-                <>
-                  <Link to="/login" className="block px-4 py-3 text-sm font-medium text-gray-300 hover:bg-white/5 rounded-lg">Login</Link>
-                  <Link to="/register" className="block px-4 py-3 text-sm font-bold text-center btn-primary">Get Started</Link>
-                </>
-              )}
+            <div className="pt-2 border-t border-white/10">
+              <Link to="/pricing" className="block px-4 py-3 text-sm font-bold text-center btn-primary">Get Started</Link>
             </div>
           </div>
         </div>

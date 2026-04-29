@@ -1,25 +1,28 @@
-import { Link } from 'react-router-dom'
-import { Check, Crown, Lock } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Check, Crown, Lock, ShieldCheck } from 'lucide-react'
 import { useInView } from '../hooks/useInView'
 
 const plans = [
   {
+    id: 'starter',
     name: 'Starter',
     price: 299,
     popular: false,
-    features: ['Phoenix Scalper V2.0 Robot', '1 Trading Account License', 'Email Support', 'Basic Setup Guide', '30 Days Updates'],
+    features: ['Quantum Edge V2.0 Robot', '1 Trading Account License', 'Email Support', 'Basic Setup Guide', '30 Days Updates'],
   },
   {
+    id: 'professional',
     name: 'Professional',
     price: 599,
     popular: true,
-    features: ['Phoenix Scalper V2.0 Robot', '3 Trading Account Licenses', 'Priority Email & Chat Support', 'Advanced Setup Guide + Video', '90 Days Updates', 'Custom Configuration Assist'],
+    features: ['Quantum Edge V2.0 Robot', '3 Trading Account Licenses', 'Priority Email & Chat Support', 'Advanced Setup Guide + Video', '90 Days Updates', 'Custom Configuration Assist'],
   },
   {
+    id: 'enterprise',
     name: 'Enterprise',
     price: 999,
     popular: false,
-    features: ['Phoenix Scalper V2.0 Robot', 'Unlimited Account Licenses', '24/7 Priority Support', 'Full Setup + Optimization Guide', 'Lifetime Updates', '1-on-1 Configuration Session', 'Private Telegram Group'],
+    features: ['Quantum Edge V2.0 Robot', 'Unlimited Account Licenses', '24/7 Priority Support', 'Full Setup + Optimization Guide', 'Lifetime Updates', '1-on-1 Configuration Session', 'Private Telegram Group'],
   },
 ]
 
@@ -29,13 +32,15 @@ function AnimatedSection({ children, className = '', delay = '' }: { children: R
 }
 
 export default function Pricing() {
+  const navigate = useNavigate()
+
   return (
     <section className="pt-28 pb-20 px-4 min-h-screen">
       <div className="max-w-5xl mx-auto">
         <AnimatedSection>
           <h1 className="text-5xl font-black text-center text-white mb-3">Choose Your Plan</h1>
           <p className="text-gray-400 text-center mb-12 max-w-xl mx-auto">
-            Select the package that fits your trading needs. All packages include the Phoenix Scalper V2.0 robot.
+            Select the package that fits your trading needs. All packages include the Quantum Edge V2.0 robot.
           </p>
         </AnimatedSection>
 
@@ -63,12 +68,12 @@ export default function Pricing() {
                     </li>
                   ))}
                 </ul>
-                <Link
-                  to="/register"
-                  className={`block text-center py-3 rounded-xl font-bold transition-all ${plan.popular ? 'btn-primary w-full justify-center' : 'bg-surface-lighter text-white hover:bg-primary/20'}`}
+                <button
+                  onClick={() => navigate(`/checkout?plan=${plan.id}`)}
+                  className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${plan.popular ? 'btn-primary justify-center' : 'bg-surface-lighter text-white hover:bg-primary/20'}`}
                 >
-                  Get Started
-                </Link>
+                  <ShieldCheck className="w-5 h-5" /> Buy {plan.name}
+                </button>
               </div>
             </AnimatedSection>
           ))}
