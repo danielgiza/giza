@@ -316,7 +316,7 @@ export default function Dashboard() {
                   { label: 'Balance', value: `$${mt5Data.balance.toLocaleString()}`, icon: DollarSign, color: 'text-white' },
                   { label: 'Equity', value: `$${mt5Data.equity.toLocaleString()}`, icon: BarChart3, color: mt5Data.equity >= mt5Data.balance ? 'text-success' : 'text-danger' },
                   { label: 'Free Margin', value: `$${mt5Data.free_margin.toLocaleString()}`, icon: Activity, color: 'text-primary-light' },
-                  { label: 'Floating P/L', value: `${totalProfit >= 0 ? '+' : ''}$${totalProfit.toFixed(2)}`, icon: totalProfit >= 0 ? TrendingUp : TrendingDown, color: totalProfit >= 0 ? 'text-success' : 'text-danger' },
+                  { label: 'Floating P/L', value: `${totalProfit >= 0 ? '+' : '-'}$${Math.abs(totalProfit).toFixed(2)}`, icon: totalProfit >= 0 ? TrendingUp : TrendingDown, color: totalProfit >= 0 ? 'text-success' : 'text-danger' },
                 ].map((card, i) => (
                   <div key={i} className="card">
                     <div className="flex items-center justify-between mb-2">
@@ -453,7 +453,7 @@ export default function Dashboard() {
                           <td colSpan={3} className="py-2.5 text-right">
                             <span className="text-xs text-gray-500 mr-2">Total P/L:</span>
                             <span className={`font-black ${totalProfit >= 0 ? 'text-success' : 'text-danger'}`}>
-                              {totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(2)}
+                              {totalProfit >= 0 ? '+' : '-'}${Math.abs(totalProfit).toFixed(2)}
                             </span>
                           </td>
                         </tr>
